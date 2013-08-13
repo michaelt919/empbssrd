@@ -921,9 +921,7 @@ void dhsv2rgb(double h, double s, double v,
         *b *= f;
 }
 
-
-
-float* equation8(FitData fd,float n1,int xdim, int  ydim){
+void getIntensities(FitData fd,float n1,int xdim, int  ydim, float Intensity[500][500]){
 	//Ks*exp((-Ke*Mu) - Kc*Ki);
 	
 	// polar coordinate equations
@@ -977,14 +975,8 @@ float* equation8(FitData fd,float n1,int xdim, int  ydim){
 	//project it back to the unit disk from spherical coords.
 	float X0 = 2*(theta0/PI)*cos(phi0);
 	float Y0 = 2*(theta0/PI)*sin(phi0);
-	//X0 = fd.maxdir.x;
-	//Y0 = fd.maxdir.y;
 
-	//printf("angle=%g\n",angle);
-//	int xdim = 200;
-//	int ydim =200;
 	float max=0,min=0,maxx,maxy;
-	float Intensity[500][500];
 	for(int ix=0;ix<xdim;ix++){
 		for(int iy=0;iy<ydim;iy++){
 			float xd0 = (ix-xdim/2.0)/(xdim/2.0);
@@ -997,15 +989,6 @@ float* equation8(FitData fd,float n1,int xdim, int  ydim){
 			xd = xd*cos(angle)- yd*sin(angle);//-fd.maxdir.x;
 			yd = xd*sin(angle) + yd*cos(angle);//-fd.maxdir.y;
 
-		//	xd = xd*cos(angle)- yd*sin(angle);//-fd.maxdir.x;
-		//	yd = xd*sin(angle) + yd*cos(angle);//-fd.maxdir.y;
-
-		//	xd = xd + fd.r*cos(fd.ts);
-		//	yd = yd + fd.r*sin(fd.ts);
-
-			//printf("sin and cos values are %f %f \n",cos(fd.ts),sin(fd.ts));
-
-			
 			float a,b;
 			if (xd < 0) 
 			{
@@ -1024,80 +1007,47 @@ float* equation8(FitData fd,float n1,int xdim, int  ydim){
 			{
 					 b = fd.fit_vars.l_ay;
 			}
-//		    printf("%g %g ",xd,yd);
 
 		    complex<float> i=sqrt( complex<float>(-1) );
 		    complex<float> Z= (xd)/a + i*(yd)/b;
 
-		    //acosh(x)=lg(x+sqrt(X*X-1))
 		    complex<float> temp=Z*Z;
 		    temp-=1.0;
 		    Z=log(Z+sqrt(temp));
-		   // cout<<real(Z)<<" ";
 		    float mu=real(Z);
 		    if(mu<0) mu=-mu;
 		    float kI=sqrt((xd)*(xd) + (yd)*(yd));
 
-		    //printf("%g ",Z);
 		    float Ft=1;
 		    float thetai=atan(fd.maxdir.y/fd.maxdir.x);
 		    float thetat=atan(yd/xd);
-		   // Ft=(cos(thetai)*(1+n1)*(cos(thetai)+cos(thetat))*n1)/(cos(thetai)*cos(thetat)*(1+n1*n1)+n1*(cos(thetai)*cos(thetai)+cos(thetat)*cos(thetat)));
 		    Intensity[ix][iy]=fd.scale*exp(-fd.fit_vars.l_px*mu-fd.fit_vars.l_py*kI)*Ft;
-
-		    //printf("%g ",Intensity[ix][iy]);
 
 		    if(max <Intensity[ix][iy])
 		                {max = Intensity[ix][iy];maxx=ix;maxy=iy;}
 		    if(min >Intensity[ix][iy])
 		    			min = Intensity[ix][iy];
-			}
-
-
-			//printf("\n");
+		}
 	}
-	//printf("max=%g %g %g",max,maxx,maxy);
 
-	//color map is right here 
+	for(int ix=0;ix<xdim;ix++){
+		for(int iy=0;iy<ydim;iy++){
+			Intensity[ix][iy]/=max;
+		}
+	}
+}
+
+
+float* equation8(FitData fd,float n1,int xdim, int  ydim){
+	
+	float Intensity[500][500];
+	getIntensities(fd, n1, xdim, ydim, Intensity);
 
 	Colortype *col[500];
 	for(int ix=0;ix<xdim;ix++){
 		col[ix]=new Colortype[ydim];
 			for(int iy=0;iy<ydim;iy++){
-				Intensity[ix][iy]/=max;
-				//printf("%g ",Intensity[ix][iy]);
-//				Intensity[ix][iy]=(Intensity[ix][iy]-min)/(max-min);
 			    Colortype tem;
-				/*tem.rgb[0]=Intensity[ix][iy];
-				tem.rgb[1]=Intensity[ix][iy];
-				tem.rgb[2]=1-Intensity[ix][iy];
-				//blue to yellow red
-
-				if(Intensity[ix][iy]<0.5){
-				tem.rgb[0]=Intensity[ix][iy]*2;
-				tem.rgb[1]=Intensity[ix][iy]*2;
-				tem.rgb[2]=1-Intensity[ix][iy]*2;
-				}else{
-					tem.rgb[0]=1;
-					tem.rgb[1]=2-Intensity[ix][iy]*2;
-					tem.rgb[2]=0;
-				}
-				*/
-
-				/*if(Intensity[ix][iy]<0.5)
-					tem.rgb[0] = 0;
-				else
-					tem.rgb[0] = 2*Intensity[ix][iy] - 1 ; //contribution should be 1 when intensity = 1 ,contribution should be zero once Intensity > 0.5
-				
-				if(Intensity[ix][iy]<=0.5)
-					tem.rgb[1] =  2*Intensity[ix][iy] ;
-				else
-				    tem.rgb[1] = 2*(1-Intensity[ix][iy]);
-
-				if(Intensity[ix][iy]>0.5)
-					tem.rgb[2] = 0;
-				else
-					tem.rgb[2] = 1 - 2*Intensity[ix][iy];*/
 					
 				double rd = 0;
 				double gd = 0;
@@ -1106,29 +1056,14 @@ float* equation8(FitData fd,float n1,int xdim, int  ydim){
 				tem.rgb[0] = rd;
 				tem.rgb[1]= gd;
 				tem.rgb[2] = bd;
-
-			//	tem.rgb[1] = Intensity[ix][iy]; //contribution should be 1 when intensity = 0.5
-			//	tem.rgb[2] = Intensity[ix][iy]; //contribution should be 1 when intensity = 1
-				//tem.rgb[1]= Intensity[ix][iy]*127;
-				//tem.rgb[2] = Intensity[ix][iy]*100;
-
-				//tem.rgb[0] = Intensity[ix][iy]*255;
-				//tem.rgb[1] = Intensity[ix][iy]*255;
 				
 				col[ix][iy]=tem;
 			}
-			//printf("\n");
 	}
 
 	char *outputfile="PPM1.ppm";
 	return imgoutput(xdim,ydim,col);
-	//PPMoutput(outputfile,xdim,ydim,col);
-
-
 }
-
-
-
 
 void PPMoutput(dataInput userInput, int width,int height){
 	
@@ -1206,4 +1141,46 @@ float* wholepic(dataInput userInput, int width,int height){
 	//printf("%f --- ts value is ",fd.ts);
 	//printf("%f --- sints",sin(fd.ts));
 	return	equation8(fd,userInput.n,width,height);
+}
+
+float* wholepicMono(dataInput userInput, int width,int height){
+	//this is the main function..
+	//reads the fit data ,passes it to the equation.
+	FitData** lerped_val = new FitData*[8];
+
+		for(int i=0;i<8;i++)
+			lerped_val[i] = new FitData[156];
+
+	FitData fd= lerp_user_input(userInput,lerped_val);  //theta i, g, albego, theta s,r
+
+	for(int i=0;i<8;i++)
+	delete[] lerped_val[i];
+
+	delete[] lerped_val;
+
+	FitData dummy_fd ;
+	userInput.ti=60*3.1415926/180;
+	userInput.ts=60*3.1415926/180;
+	userInput.r=0.8;
+	userInput.a=0.1;
+	userInput.g=0.3;
+	userInput.n=1.4;
+	dummy_fd.a = userInput.a;
+	dummy_fd.g= userInput.g;
+	dummy_fd.r = userInput.r;
+	dummy_fd.ti = userInput.ti;
+	dummy_fd.ts = userInput.ts;
+	//printf("%f --- ts value is ",fd.ts);
+	//printf("%f --- sints",sin(fd.ts));
+
+	float intensities[500][500];
+	getIntensities(fd, userInput.n, width, height, intensities);
+
+	float* pixels = new float[width*height];
+	for(int j=0;j<height;j++)
+		for(int i=0;i<width;i++)
+		{
+			pixels[(j*width+i)]=intensities[width-1-i][j];
+		}
+	return pixels;
 }
